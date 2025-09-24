@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>RangVigyaan - An Immersive AI Kolam Experience</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;700&display=swap" rel="stylesheet">
+        <script src="https://unpkg.com/lucide@latest"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+        <style>
+            :root {
+                --glow-color: #e52e71;
+            }
+            body {
+                font-family: 'Jost', sans-serif;
+                background-color:rgba(0, 217, 255, 0.37);
+                color: #e0e0e0;
+                overflow-x: hidden;
+                cursor: none;
+            }
+            #three-canvas {
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+            }
+            .content-section { display: none; }
+            .content-section.active { display: block; }
+            .glass-card {
+                background: rgba(20, 20, 20, 0.7);
+                backdrop-filter: blur(15px);
+                -webkit-backdrop-filter: blur(15px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 1.5rem;
+                padding: 2.5rem;
+                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            }
+            .header-title {
+                font-weight: 700;
+                letter-spacing: 0.1em;
+                background: -webkit-linear-gradient(45deg, #ff8a00, #e52e71, #8a2be2);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                text-shadow: 0 0 15px rgba(229, 46, 113, 0.5);
+            }
+            .btn {
+                background: linear-gradient(45deg, #ff8a00, #e52e71);
+                color: white;
+                padding: 0.75rem 1.5rem;
+                border-radius: 9999px;
+                font-weight: 500;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(229, 46, 113, 0.35);
+            }
+            .btn:hover {
+                transform: translateY(-3px) scale(1.05);
+                box-shadow: 0 6px 20px rgba(229, 46, 113, 0.5);
+            }
+            .info-card {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 1rem;
+                padding: 1.5rem;
+                transition: all 0.3s ease;
+                cursor: pointer;
+                min-height: 200px;
+            }
+            .info-card:hover {
+                background: rgba(255, 255, 255, 0.1);
+                border-color: var(--glow-color);
+                transform: translateY(-5px);
+            }
+            .lucide { stroke: #ff8a00; }
+            .cursor-dot {
+                position: fixed; top: 0; left: 0; transform: translate(-50%, -50%);
+                border-radius: 50%; z-index: 10000; pointer-events: none;
+                width: 8px; height: 8px; background-color: var(--glow-color);
+                transition: transform 0.2s ease-out;
+            }
+            .sparkle-trail {
+                position: fixed; border-radius: 50%; width: 8px; height: 8px;
+                z-index: 9999; pointer-events: none;
+            }
+            .sparkle-particle {
+                position: absolute; width: 10px; height: 10px; border-radius: 50%;
+            }
+            /* Nav & Footer */
+            nav {
+                background: rgba(10, 10, 10, 0.5);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .nav-link {
+                position: relative;
+                color: #e0e0e0;
+                transition: color 0.3s;
+            }
+            .nav-link:hover { color: var(--glow-color); }
+            .nav-link::after {
+                content: '';
+                position: absolute;
+                width: 0;
+                height: 2px;
+                bottom: -5px;
+                left: 50%;
+                background-color: var(--glow-color);
+                transition: all 0.3s ease;
+            }
+            .nav-link:hover::after, .nav-link.active::after {
+                width: 100%;
+                left: 0;
+            }
+            .page-title {
+                color: #ff8a00;
+                text-shadow: 0 0 10px rgba(255, 138, 0, 0.5);
+            }
+            .back-button {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                margin-bottom: 2rem;
+            }
+
+            #myP{
+                color: #000000;
+            }
+
+        </style>
+
+    </head>
+
+    <body>
+        <div class="cursor-dot"></div>
+        <canvas id="three-canvas"></canvas>
+
+        <!-- Navigation Bar -->
+        <nav class="sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-20">
+                    <div class="flex-shrink-0 text-2xl font-bold header-title tracking-normal">RangVigyaan</div>
+                    <div class="hidden md:block">
+                        <div class="ml-10 flex items-baseline space-x-8">
+                            <a href="#home" class="nav-link px-3 py-2 rounded-md text-lg font-medium active">Home</a>
+                            <a href="#ai-kolam" class="nav-link px-3 py-2 rounded-md text-lg font-medium">AI Kolam</a>
+                            <a href="#educational" class="nav-link px-3 py-2 rounded-md text-lg font-medium">Educational</a>
+                            <a href="#shopping" class="nav-link px-3 py-2 rounded-md text-lg font-medium">Shopping</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="relative">
+            <!-- Home Page Section -->
+            <section id="home" class="content-section active"> 
+                <div class="max-w-7xl mx-auto py-16 px-4 text-center">
+                    <h1 class="text-5xl md:text-7xl font-bold header-title">RangVigyaan</h1>
+                    <p class="text-lg md:text-xl mt-4 text-gray-300 tracking-wider" id="myP">The AI Art Weaver</p>
+                    <p class="max-w-3xl mx-auto mt-8 text-gray-400" id="myP">
+                        Welcome to a digital sanctuary where ancient tradition meets artificial intelligence. RangVigyaan is an immersive experience celebrating the beauty of Kolam and Rangoli. Generate unique, mesmerizing patterns, learn about their rich history, and explore a universe of color and geometry.
+                    </p>
+                    <button class="btn mt-12 !text-xl !py-4 !px-8" onclick="navigateTo('ai-kolam')">Begin Weaving</button>
+                </div>
+            </section>
+
+            <!-- AI Kolam Page Section -->
+            <section id="ai-kolam" class="content-section">
+                <div class="glass-card max-w-7xl mx-auto my-12">
+                    <div class="flex flex-col lg:flex-row gap-8 items-center">
+                        <div class="w-full lg:w-1/3 space-y-6">
+                            <div class="flex items-center gap-4">
+                                <i data-lucide="brain-circuit" class="lucide w-10 h-10"></i>
+                                <h2 class="text-3xl font-bold">Create Your Design</h2>
+                            </div>
+                            <p class="text-gray-400">Select a traditional pattern, adjust its complexity, and watch the digital weaver bring your vision to life, line by line.</p>
+                            <div>
+                                <label for="pattern-type" class="block text-sm font-medium text-gray-300 mb-2">Traditional Pattern</label>
+                                <select id="pattern-type" class="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white">
+                                    <option value="lotus">Lotus Mandala</option>
+                                    <option value="diya">Diya Lamp</option>
+                                    <option value="pulli">Sikku Kolam (Interwoven)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="complexity-slider" class="block text-sm font-medium text-gray-300 mb-2">Complexity: <span id="complexity-value">5</span></label>
+                                <input type="range" id="complexity-slider" min="3" max="8" value="5" class="w-full">
+                            </div>
+                            <button id="generate-btn" class="btn w-full !text-lg !py-3">Weave Artwork</button>
+                        </div>
+                        <div class="w-full lg:w-2/3 aspect-square flex items-center justify-center bg-black/20 rounded-2xl p-4">
+                            <svg id="kolam-svg" width="100%" height="100%" viewBox="0 0 500 500"></svg>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Educational Hub Page -->
+            <section id="educational" class="content-section">
+                <div class="max-w-7xl mx-auto py-16 px-4">
+                    <h2 class="text-4xl font-bold text-center mb-12 page-title">Explore the Universe of Kolam</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div class="info-card" onclick="navigateTo('page-history')">
+                            <i data-lucide="scroll-text" class="lucide mb-4 w-8 h-8"></i>
+                            <h3 class="text-xl font-semibold mb-2">Historic Context</h3>
+                            <p class="text-gray-400">Discover the timeless tradition and mathematical genius behind these ephemeral artworks. Click to learn more.</p>
+                        </div>
+                        <div class="info-card" onclick="navigateTo('page-math')">
+                            <i data-lucide="atom" class="lucide mb-4 w-8 h-8"></i>
+                            <h3 class="text-xl font-semibold mb-2">Science & Math</h3>
+                            <p class="text-gray-400">Explore how we translate sacred geometry into generative AI, creating infinite variations. Click to learn more.</p>
+                        </div>
+                        <div class="info-card" onclick="navigateTo('page-tutorial')">
+                            <i data-lucide="edit-3" class="lucide mb-4 w-8 h-8"></i>
+                            <h3 class="text-xl font-semibold mb-2">Learn Kolam</h3>
+                            <p class="text-gray-400">An interactive step-by-step tutorial to start your journey as a Kolam artist. Click to begin.</p>
+                        </div>
+                        <div class="info-card opacity-50 cursor-not-allowed">
+                            <i data-lucide="gamepad-2" class="lucide mb-4 w-8 h-8"></i>
+                            <h3 class="text-xl font-semibold mb-2">Gamified Learning</h3>
+                            <p class="text-gray-400">Challenge your spatial reasoning by solving intricate Kolam puzzles. (Coming Soon)</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Shopping Page -->
+            <section id="shopping" class="content-section">
+                <div class="max-w-7xl mx-auto py-16 px-4">
+                    <h2 class="text-4xl font-bold text-center mb-12 page-title">Bring Art Home</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <a href="https://rangvigyaan.netlify.app" target="_blank" class="info-card !p-0 overflow-hidden">
+                            <img src="https://placehold.co/600x400/1a1a1a/ff8a00?text=3D+Decor" alt="3D Decor" class="w-full h-48 object-cover">
+                            <div class="p-6">
+                                <h3 class="text-xl font-semibold mb-2">3D Home Decor</h3>
+                                <p class="text-gray-400">Explore our curated collection of Kolam-inspired home decor. (External Link)</p>
+                            </div>
+                        </a>
+                        <div class="info-card !p-0 overflow-hidden">
+                            <img src="https://placehold.co/600x400/1a1a1a/e52e71?text=Creator's+Kit" alt="Creator's Kit" class="w-full h-48 object-cover">
+                            <div class="p-6">
+                                <h3 class="text-xl font-semibold mb-2">Creator's Kit</h3>
+                                <p class="text-gray-400">Kits for all ages to create stunning physical Kolams. (Coming Soon)</p>
+                            </div>
+                        </div>
+                        <div class="info-card !p-0 overflow-hidden">
+                            <img src="https://placehold.co/600x400/1a1a1a/8a2be2?text=Art+Prints" alt="Art Prints" class="w-full h-48 object-cover">
+                            <div class="p-6">
+                                <h3 class="text-xl font-semibold mb-2">Digital Art Prints</h3>
+                                <p class="text-gray-400">Own a high-resolution print of your favorite AI-generated Rangoli. (Coming Soon)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Detailed Content Pages -->
+            <section id="page-history" class="content-section">
+                <div class="max-w-4xl mx-auto py-16 px-4">
+                    <button class="btn back-button" onclick="navigateTo('educational')"><i data-lucide="arrow-left"></i> Back</button>
+                    <h2 class="text-4xl font-bold mb-8 page-title">A Timeless Tradition</h2>
+                    <img src="https://placehold.co/800x400/1a1a1a/e0e0e0?text=Traditional+Kolam+Art" alt="Traditional Kolam Art" class="w-full rounded-lg mb-8">
+                    <div class="space-y-6 text-gray-300 text-lg">
+                        <p>Kolam, known as Muggu or Rangoli in different parts of India, is far more than mere decoration. It is a daily ritual, a form of prayer, and a mathematical puzzle, all rendered at the threshold of a home. Traditionally drawn by women at dawn using rice flour, these intricate patterns serve as a sacred welcoming space for deities and guests, and as a source of food for ants and birds, symbolizing a harmonious coexistence with nature.</p>
+                        <p>The art form is built upon a grid of dots (pulli), around which graceful, looping lines are drawn to form complex geometrical shapes. The constraint that lines must form closed loops is fundamental, representing the infinite cycle of life and cosmic harmony. Each pattern, from simple swirls to complex fractals, carries its own meaning, often inspired by nature, mythology, or abstract principles of symmetry and infinity.</p>
+                    </div>
+                </div>
+            </section>
+        
+            <section id="page-math" class="content-section">
+                <!-- Content for The Digital Algorithm page -->
+                <div class="max-w-4xl mx-auto py-16 px-4">
+                    <button class="btn back-button" onclick="navigateTo('educational')"><i data-lucide="arrow-left"></i> Back</button>
+                    <h2 class="text-4xl font-bold mb-8 page-title">Translating Geometry to Code</h2>
+                    <img src="https://placehold.co/800x400/1a1a1a/e0e0e0?text=Generative+Art+Code" alt="Generative Art Code" class="w-full rounded-lg mb-8">
+                    <div class="space-y-6 text-gray-300 text-lg">
+                        <p>The beauty of Kolam lies in its strong mathematical underpinnings, making it a perfect subject for generative art. At RangVigyaan, we translate these ancient principles into modern algorithms. The core components are:</p>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><b>The Dot Grid (Pulli):</b> This forms the foundational canvas, a coordinate system that constrains the design.</li>
+                            <li><b>Pathfinding & Loops:</b> We use algorithms to draw continuous, non-intersecting lines that start and end at the same point, creating the characteristic closed loops of a Sikku Kolam.</li>
+                            <li><b>Symmetry and Repetition:</b> By applying rotational and reflective symmetry rules to a single motif, our AI can generate vast, complex mandalas from a simple seed of code.</li>
+                        </ul>
+                        <p>This process allows our AI to act as a digital artist, creating infinite, unique designs that honor the logic and spirit of the original art form while exploring new creative possibilities.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-tutorial" class="content-section">
+                <div class="max-w-4xl mx-auto py-16 px-4">
+                    <button class="btn back-button" onclick="navigateTo('educational')"><i data-lucide="arrow-left"></i> Back</button>
+                    <h2 class="text-4xl font-bold text-center mb-8 page-title">Interactive Tutorial: Your First Kolam</h2>
+                     <div class="glass-card">
+                        <div class="aspect-square bg-black/20 rounded-lg p-2">
+                            <svg id="tutorial-svg" width="100%" height="100%" viewBox="0 0 500 500"></svg>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Footer -->
+        <footer class="relative z-10 border-t border-gray-800 mt-20 py-8 px-4">
+            <div class="max-w-7xl mx-auto text-center text-gray-500">
+                <p>&copy; 2025 RangVigyaan. All Rights Reserved.</p>
+                <div class="flex justify-center space-x-6 mt-4">
+                    <a href="#" class="hover:text-white">Contact Us</a>
+                    <a href="#" class="hover:text-white">Privacy Policy</a>
+                    <a href="#" class="hover:text-white">Terms of Service</a>
+                </div>
+            </div>
+        </footer>
+
+        <script>
+            lucide.createIcons();
+            const VIBRANT_COLORS = ['#ff8a00', '#e52e71', '#8a2be2', '#00bfff', '#32cd32', '#ffdf00'];
+
+            // --- Custom Cursor Logic ---
+            const cursorDot = document.querySelector('.cursor-dot');
+            window.addEventListener('mousemove', e => {
+                cursorDot.style.left = `${e.clientX}px`;
+                cursorDot.style.top = `${e.clientY}px`;
+                createSparkleTrail(e.clientX, e.clientY);
+            });
+            document.body.addEventListener('click', e => createSparkleBurst(e.clientX, e.clientY));
+
+            function createSparkleTrail(x, y) { /* ... (same as before) ... */ }
+            function createSparkleBurst(x, y) { /* ... (same as before) ... */ }
+            // Note: The sparkle functions are kept identical to the previous version. They are omitted here for brevity but are present in the full code.
+            function createSparkleTrail(x, y) {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle-trail';
+                sparkle.style.left = `${x}px`;
+                sparkle.style.top = `${y}px`;
+                sparkle.style.backgroundColor = VIBRANT_COLORS[Math.floor(Math.random() * VIBRANT_COLORS.length)];
+                document.body.appendChild(sparkle);
+                sparkle.animate([
+                    { opacity: 1, transform: 'scale(1)' },
+                    { opacity: 0, transform: `scale(0) translate(${(Math.random()-0.5)*50}px, ${(Math.random()-0.5)*50}px)` }
+                ],1000);
+                setTimeout(() => sparkle.remove(), 1000);
+            }
+
+            function createSparkleBurst(x, y) {
+                const burstContainer = document.createElement('div');
+                burstContainer.className = 'sparkle-burst';
+                for (let i = 0; i < 20; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'sparkle-particle';
+                    particle.style.left = `${x}px`;
+                    particle.style.top = `${y}px`;
+                    const color = VIBRANT_COLORS[Math.floor(Math.random() * VIBRANT_COLORS.length)];
+                    particle.style.backgroundColor = color;
+                    document.body.appendChild(particle);
+                    const angle = Math.random() * 2 * Math.PI;
+                    const radius = Math.random() * 80 + 20;
+                    particle.animate([
+                        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+                        { transform: `translate(-50%, -50%) scale(0) translate(${radius * Math.cos(angle)}px, ${radius * Math.sin(angle)}px)`, opacity: 0 }
+                    ], 800);
+                    setTimeout(() => particle.remove(), 800);
+                }
+            }
+
+
+            // --- Three.js Colorful Nebula ---
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        
+            const particleCount = 8000;
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const baseColors = [new THREE.Color('#ff8a00'), new THREE.Color('#e52e71'), new THREE.Color('#8a2be2'), new THREE.Color('#00bfff'), new THREE.Color('#32cd32')];
+
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 15;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 15;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 15;
+                const color = baseColors[i % baseColors.length];
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+        
+            const particles = new THREE.BufferGeometry();
+            particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const particleMaterial = new THREE.PointsMaterial({
+                size: 0.025, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending,
+            });
+            const particleSystem = new THREE.Points(particles, particleMaterial);
+            scene.add(particleSystem);
+            camera.position.z = 5;
+
+            const clock = new THREE.Clock();
+            const mouse = new THREE.Vector2();
+            window.addEventListener('mousemove', e => {
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            });
+
+            function animateThree() {
+                const elapsedTime = clock.getElapsedTime();
+                particleSystem.rotation.y = elapsedTime * 0.1;
+                camera.position.x += (mouse.x * 0.5 - camera.position.x) * 0.05;
+                camera.position.y += (mouse.y * 0.5 - camera.position.y) * 0.05;
+                camera.lookAt(scene.position);
+                requestAnimationFrame(animateThree);
+                renderer.render(scene, camera);
+            }
+            animateThree();
+
+            window.addEventListener('resize', () => { /* ... (same as before) ... */ });
+
+
+
+            // --- Navigation and Page Logic ---
+            const navLinks = document.querySelectorAll('.nav-link');
+            const contentSections = document.querySelectorAll('.content-section');
+
+            function navigateTo(pageId) {
+                contentSections.forEach(section => section.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+                navLinks.forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href') === `#${pageId}` || link.getAttribute('href') === `#${pageId.split('-')[0]}`);
+                });
+                window.scrollTo(0, 0);
+
+                if (pageId === 'page-tutorial') {
+                    const tutorialSvg = document.getElementById('tutorial-svg');
+                    startDrawing(tutorialSvg, 'pulli', 4, true); // Trigger tutorial draw
+                }
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', e => {
+                    e.preventDefault();
+                    const pageId = e.target.getAttribute('href').substring(1);
+                    navigateTo(pageId);
+                });
+            });
+
+            // --- Kolam Drawing Logic ---
+            const svg = document.getElementById('kolam-svg');
+            const generateBtn = document.getElementById('generate-btn');
+            const patternSelect = document.getElementById('pattern-type');
+            const complexitySlider = document.getElementById('complexity-slider');
+            const complexityValue = document.getElementById('complexity-value');
+        
+            let isDrawing = false;
+        
+            complexitySlider.addEventListener('input', () => complexityValue.textContent = complexitySlider.value);
+            generateBtn.addEventListener('click', () => {
+                if (isDrawing) return;
+                startDrawing(svg, patternSelect.value, parseInt(complexitySlider.value));
+            });
+        
+            async function animateSVGPaths(targetSvg, commands) { /* ... (same as before) ... */ }
+            async function startDrawing(targetSvg, pattern, complexity, isTutorial = false) {
+                if(!isTutorial) {
+                    isDrawing = true;
+                    generateBtn.textContent = 'Weaving...';
+                    generateBtn.disabled = true;
+                }
+                let commands = [];
+                if (pattern === 'pulli') commands = generatePulliKolam(complexity);
+                if (pattern === 'lotus') commands = generateLotusKolam(complexity);
+                if (pattern === 'diya') commands = generateDiyaKolam(complexity);
+
+                await animateSVGPaths(targetSvg, commands);
+            
+                if(!isTutorial) {
+                    isDrawing = false;
+                    generateBtn.textContent = 'Weave Artwork';
+                    generateBtn.disabled = false;
+                }
+            }
+        
+            function generateLotusKolam(petals) {
+                const commands = [];
+                const center = 250;
+                const layers = 3;
+                for(let l=1; l<=layers; l++) {
+                    const radius = l * 60;
+                    const angleStep = (2 * Math.PI) / petals;
+                    for (let i = 0; i < petals; i++) {
+                        const angle = i * angleStep;
+                        const color = VIBRANT_COLORS[(l+i) % VIBRANT_COLORS.length];
+                        const p1x = center + radius * Math.cos(angle);
+                        const p1y = center + radius * Math.sin(angle);
+                        const p2x = center + radius * Math.cos(angle + angleStep);
+                        const p2y = center + radius * Math.sin(angle + angleStep);
+                        const cp_x = center + (radius + 50) * Math.cos(angle + angleStep/2);
+                        const cp_y = center + (radius + 50) * Math.sin(angle + angleStep/2);
+                        const cp2_x = center;
+                        const cp2_y = center;
+                        commands.push({ path: `M ${p1x} ${p1y} Q ${cp_x} ${cp_y} ${p2x} ${p2y} T ${p1x} ${p1y}`, color });
+                    }
+                }
+                return commands;
+            }
+
+            function generateDiyaKolam(complexity) {
+                const commands = [];
+                const center = 250;
+                const numDiyas = complexity;
+                const angleStep = (2 * Math.PI) / numDiyas;
+                for(let i=0; i<numDiyas; i++) {
+                    const angle = i*angleStep;
+                    const r = 150;
+                    const x = center + r * Math.cos(angle);
+                    const y = center + r * Math.sin(angle);
+                    const size = 50;
+                    // Diya base
+                    const pathBase = `M ${x - size/2} ${y} C ${x - size/2} ${y + size/2}, ${x + size/2} ${y + size/2}, ${x + size/2} ${y}`;
+                    commands.push({ path: pathBase, color: VIBRANT_COLORS[i % VIBRANT_COLORS.length] });
+                    // Flame
+                    const pathFlame = `M ${x} ${y} Q ${x - size/4} ${y - size/2}, ${x} ${y - size} Q ${x + size/4} ${y - size/2}, ${x} ${y} Z`;
+                    commands.push({ path: pathFlame, color: '#ffdf00' });
+                }
+                return commands;
+            }
+            function generatePulliKolam(gridSize) { /* ... (same as before) ... */ }
+        
+            // Initial setup
+            navigateTo('home');
+            // Omitted full functions for brevity, they are the same as the previous version
+            async function animateSVGPaths(targetSvg, commands) {
+                targetSvg.innerHTML = '';
+                for (const cmd of commands) {
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', cmd.path);
+                    path.setAttribute('fill', cmd.fill || 'none');
+                    path.setAttribute('stroke', cmd.color);
+                    path.setAttribute('stroke-width', '2');
+                    path.setAttribute('stroke-linecap', 'round');
+                    targetSvg.appendChild(path);
+                    const length = path.getTotalLength();
+                    if (length > 0) {
+                        path.style.strokeDasharray = length;
+                        path.style.strokeDashoffset = length;
+                        await new Promise(resolve => {
+                            path.getBoundingClientRect();
+                            path.style.transition = `stroke-dashoffset ${Math.max(0.1, length / 400)}s ease-in-out`;
+                            path.style.strokeDashoffset = '0';
+                            setTimeout(resolve, Math.max(100, length / 400 * 1000));
+                        });
+                    }
+                }
+            }
+            function generatePulliKolam(gridSize) {
+                const commands = [];
+                const center = 250;
+                const totalSize = 400;
+                const spacing = totalSize / (gridSize - 1);
+                for (let i = 0; i < gridSize; i++) {
+                    for (let j = 0; j < gridSize; j++) {
+                        const x = center - totalSize / 2 + i * spacing;
+                        const y = center - totalSize / 2 + j * spacing;
+                        commands.push({ path: `M ${x-2} ${y} A 2 2 0 1 1 ${x+2} ${y} A 2 2 0 1 1 ${x-2} ${y}`, color: 'white', fill: 'white' });
+                    }
+                }
+                for (let i = 0; i < gridSize - 1; i++) {
+                    for (let j = 0; j < gridSize - 1; j++) {
+                        const x = center - totalSize / 2 + i * spacing;
+                        const y = center - totalSize / 2 + j * spacing;
+                        const color = VIBRANT_COLORS[(i + j) % VIBRANT_COLORS.length];
+                        const path = `M ${x + spacing/2} ${y} C ${x} ${y}, ${x} ${y + spacing/2}, ${x} ${y+spacing/2} M ${x + spacing} ${y + spacing/2} C ${x + spacing} ${y + spacing}, ${x+spacing/2} ${y+spacing}, ${x+spacing/2} ${y+spacing}`;
+                        commands.push({ path, color });
+                    }
+                }
+                return commands;
+            }
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+        </script>
+
+    </body>
+    
+</html>
+
